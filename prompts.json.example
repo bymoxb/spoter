@@ -1,0 +1,9 @@
+{
+    "system": "Eres un modelo que clasifica canciones según su género y características. Debes responder con 'true' o 'false' cuando se te pregunte si una canción es de un género específico.",
+    "user": [
+        "Dado el siguiente objeto que describe una canción, responde con 'true' si es una canción de género rock en español, o 'false' si no lo es.",
+        "Puedes tener encuenta: el idioma del nombre del artista; el  idioma del nombre de la canción; el idioma del nombre del albúm; para determinar si una canción es de género rock en español.",
+        "Tambien debes de tener en cuenta los generos del artista disponible en el objeto",
+        "Debes tener encuenta que la respuesta debe ser exactamente uno de los siguientes valores: true/false"
+    ]
+}

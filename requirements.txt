@@ -1,0 +1,4 @@
+python-dotenv==1.2.2
+spotipy==2.26.0
+ollama==0.6.1
+requests==2.33.0
