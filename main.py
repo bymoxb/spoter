@@ -1,12 +1,12 @@
+from collections import defaultdict
 from dotenv import load_dotenv
 from ollama import chat
 from ollama import ChatResponse
-import requests
 from spotipy.oauth2 import SpotifyOAuth
-from collections import defaultdict
-# from tracks import tracks
+import argparse
 import json
 import os
+import requests
 import spotipy
 import time
 
@@ -34,8 +34,8 @@ if not SPOTIFY_CLIENT_ID:
     raise ValueError('SPOTIFY_CLIENT_ID es requerida')
 if not SPOTIFY_CLIENT_SECRET:
     raise ValueError('SPOTIFY_CLIENT_SECRET es requerida')
-if not SPOTIFY_PLAYLIST_ID:
-    raise ValueError('SPOTIFY_PLAYLIST_ID es requerida')
+# if not SPOTIFY_PLAYLIST_ID:
+#     raise ValueError('SPOTIFY_PLAYLIST_ID es requerida')
 if not SPOTIFY_PLAYLIST_IDS:
     raise ValueError('SPOTIFY_PLAYLIST_IDS es requerida')
 if not OLLAMA_MODEL:
@@ -55,18 +55,20 @@ sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
 ))
 
 
-def get_spotify_tracks(playlists):
+def get_spotify_tracks(playlists, silent=False):
     raw_tracks = []
 
     for playlist_id in playlists:
-        print("Extrayendo canciones de la playlist: " + playlist_id)
+        if not silent:
+            print("Extrayendo canciones de la playlist: " + playlist_id)
 
         results = sp.playlist_items(playlist_id)
 
         raw_tracks_per_playlist = []
         raw_tracks_per_playlist.extend(results["items"])
 
-        print(f"Total de canciones en la playlist: {results["total"]}")
+        if not silent:
+            print(f"Total de canciones en la playlist: {results["total"]}")
 
         while results["next"]:
             time.sleep(1)
@@ -79,8 +81,6 @@ def get_spotify_tracks(playlists):
         raw_tracks.extend(raw_tracks_per_playlist)
 
         time.sleep(1)
-
-        # print()
 
     return raw_tracks
 
@@ -141,21 +141,40 @@ def determine_with_ia(tracks):
     return tracks_approved, tracks_not_approved
 
 
-def push_to_playlist(tracks):
-    current_tracks = get_spotify_tracks([SPOTIFY_PLAYLIST_ID])
+def push_to_playlist(tracks, playlist_id):
+    current_tracks = get_spotify_tracks([playlist_id], silent=True)
 
     current_track_ids = set(
         map(lambda track: track["id"], extract_relevant_data(current_tracks)))
 
     for i in range(0, len(tracks), 100):
-        print(
-            f"Agregando canciones {i} a {i+100} a la playlist {SPOTIFY_PLAYLIST_ID}")
 
         full_item_ids = list(map(lambda track: track["id"], tracks[i:i+100]))
         items = [item for item in full_item_ids if item not in current_track_ids]
 
+        print(
+            f"Para la playlist {playlist_id} se agrega la cantidad de canciones únicas: {len(items)} ")
+
         sp.playlist_add_items(
-            playlist_id=SPOTIFY_PLAYLIST_ID, items=items)
+            playlist_id=playlist_id, items=items)
+
+
+def remove_from_playlist(tracks):
+    grouped = {}
+
+    for item in tracks:
+        playlist_id = item['playlist_id']
+        if playlist_id not in grouped:
+            grouped[playlist_id] = []
+        grouped[playlist_id].append(item['id'])
+
+    group_items = grouped.items()
+
+    for i, (key, values) in enumerate(group_items):
+        print_log_progress(
+            group_items, i, f"De la playlist {key} se remueven la cantidad de ocurrencias: {len(values)}")
+        sp.playlist_remove_all_occurrences_of_items(
+            playlist_id=key, items=values)
 
 
 def extract_relevant_data(raw_tracks):
@@ -210,6 +229,8 @@ def inject_artists_metadata(tracks):
 
     artist_genres = defaultdict(list)
     artist_country = defaultdict(list)
+
+    print(f"Total artistas: {len(unique_artists)}")
 
     for i, artist in enumerate(unique_artists):
         print_log_progress(unique_artists, i,
@@ -283,10 +304,26 @@ def elapsed_time_str(elapsed_time):
 
 def main():
 
+    parser = argparse.ArgumentParser(
+        description="Clasificador de canciones usando modelo LLM")
+
+    parser.add_argument("--spotify-playlist-id", type=str,
+                        help="ID de la playlist a la que se agregará las canciones clasificadas", default=SPOTIFY_PLAYLIST_ID)
+    parser.add_argument("--push-to-playlist", action="store_true",
+                        help="Flag que indica si las canciones clasificadas se agregan a la playlist especificada")
+    parser.add_argument("--remove-from-origin", action="store_true",
+                        help="Flag que indica si se eliminan las canciones clasificadas de la playlist original")
+
+    args = parser.parse_args()
+
+    if args.push_to_playlist and args.spotify_playlist_id is None:
+        raise ValueError(
+            "Cuando se usa --push-to-playlist es necesario especificar un valor para --push-to-playlist o poblar la variable SPOTIFY_PLAYLIST_ID")
+
+    # -----------------------
+
     print("Iniciando proceso de clasificación de canciones...")
     start_time = time.time()
-
-    # print(f"Access token: {sp.auth_manager.get_access_token()}")
 
     raw_tracks = get_spotify_tracks(SPOTIFY_PLAYLIST_IDS)
     tracks = extract_relevant_data(raw_tracks)
@@ -296,7 +333,11 @@ def main():
     tracks = inject_artists_metadata(tracks)
     tracks_approved, tracks_not_approved = determine_with_ia(tracks)
 
-    # push_to_playlist(tracks_approved)
+    if args.push_to_playlist:
+        push_to_playlist(tracks_approved, args.spotify_playlist_id)
+
+    if args.remove_from_origin:
+        remove_from_playlist(tracks_approved)
 
     end_time = time.time()
 
@@ -310,6 +351,7 @@ def main():
     write_logs(tracks, "./tracks.log")
     write_logs(tracks_approved, "./tracks_approved.log")
     write_logs(tracks_not_approved, "./tracks_not_approved.log")
+
 
 if __name__ == "__main__":
     main()
