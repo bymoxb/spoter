@@ -1,28 +1,28 @@
-# 🎧 Clasificador de canciones con Spotify + IA (Ollama)
+# 🎧 Song Classifier with Spotify + AI (Ollama)
 
-Herramienta en Python para clasificar canciones de playlists de Spotify utilizando modelos de lenguaje ejecutados con Ollama.
+A Python tool to classify songs from Spotify playlists using language models running with Ollama.
 
-Permite analizar múltiples playlists, aplicar criterios personalizados mediante prompts y opcionalmente crear o modificar playlists en base a los resultados.
-
----
-
-## 🚀 Características
-
-- Clasificación de canciones usando modelos de IA  
-- Soporte para múltiples playlists de entrada  
-- Prompts completamente configurables  
-- Integración con la API de Spotify  
-- Generación de logs detallados del proceso  
-- Permite:
-  - Analizar playlists sin modificarlas
-  - Crear playlists con canciones clasificadas
-  - Eliminar canciones desde playlists de origen
+It allows analyzing multiple playlists, applying custom criteria through prompts, and optionally creating or modifying playlists based on the results.
 
 ---
 
-## 📦 Instalación
+## 🚀 Features
 
-Se recomienda utilizar un entorno virtual:
+- Song classification using AI models
+- Support for multiple input playlists
+- Fully configurable prompts
+- Integration with the Spotify API
+- Detailed process logging
+- Allows:
+  - Analyzing playlists without modifying them
+  - Creating playlists with classified songs
+  - Removing songs from source playlists
+
+---
+
+## 📦 Installation
+
+It is recommended to use a virtual environment:
 
 ```sh
 python -m venv venv
@@ -34,7 +34,7 @@ source venv/bin/activate
 venv\Scripts\activate
 ```
 
-Instalar dependencias:
+Install dependencies:
 
 ```sh
 pip install -r requirements.txt
@@ -42,61 +42,60 @@ pip install -r requirements.txt
 
 ---
 
-## ⚙️ Configuración
+## ⚙️ Configuration
 
-### 1. Variables de entorno
+### 1. Environment variables
 
 ```sh
 cp .env.example .env
 ```
 
-### 2. Descripción de variables de entorno
+### 2. Environment variables description
 
-| Variable | Descripción | Opcional | Valor por defecto |
-|---|---|---|---|
-| `SPOTIFY_REDIRECT_URI` | Dirección URL para redireccionar el flujo de autenticación de Spotify | Obligatorio | `http://127.0.0.1:8888/callback` |
-| `SPOTIFY_CLIENT_ID` | Identificador del cliente de Spotify | Obligatorio | (reemplazar con el ID real de tu aplicación) |
-| `SPOTIFY_CLIENT_SECRET` | Secreto del cliente de Spotify | Obligatorio | (reemplazar con la clave secreta real de tu aplicación) |
-| `SPOTIFY_PLAYLIST_IDS` | Lista de identificadores de las playlists de Spotify.<br>De donde se obtendran la lista de canciones para clasificar. | Obligatorio | (separados por comas) |
-| `SPOTIFY_PLAYLIST_ID` | Identificador de la playlist de destino de Spotify.<br>En esta playlist se agregaran las canciones que cumplen el criterio del modelo.<br>Es requerida si se utiliza el flag `--push-to-playlist` | Opcional | (reemplazar con el ID de tu playlist) |
-| `OLLAMA_MODEL` | Modelo de IA utilizado para clasificar las canciones | Obligatorio | (reemplazar con el nombre del modelo real de IA) |
-| `AUDIO_DB_API` | API utilizada para obtener metadatos de artistas | Opcional | `https://www.theaudiodb.com/api/v1/json/123/search.php` |
-
+| Variable                | Description                                                                                                               | Optional | Default value                                           |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------- |
+| `SPOTIFY_REDIRECT_URI`  | URL used for Spotify authentication redirect flow                                                                         | Required | `http://127.0.0.1:8888/callback`                        |
+| `SPOTIFY_CLIENT_ID`     | Spotify client ID                                                                                                         | Required | (replace with your app's real ID)                       |
+| `SPOTIFY_CLIENT_SECRET` | Spotify client secret                                                                                                     | Required | (replace with your app's real secret)                   |
+| `SPOTIFY_PLAYLIST_IDS`  | List of Spotify playlist IDs.<br>Used as input sources for songs to classify.                                             | Required | (comma-separated)                                       |
+| `SPOTIFY_PLAYLIST_ID`   | Destination Spotify playlist ID.<br>Approved songs will be added here.<br>Required if using the `--push-to-playlist` flag | Optional | (replace with your playlist ID)                         |
+| `OLLAMA_MODEL`          | AI model used for song classification                                                                                     | Required | (replace with actual model name)                        |
+| `AUDIO_DB_API`          | API used to fetch artist metadata                                                                                         | Optional | `https://www.theaudiodb.com/api/v1/json/123/search.php` |
 
 ---
 
-### 3. Configuración del prompt
+### 3. Prompt configuration
 
 ```sh
 cp prompts.json.example prompts.json
 ```
 
-Define en este archivo los criterios que utilizará el modelo para clasificar las canciones.
+Define in this file the criteria that the model will use to classify songs.
 
 ---
 
-## ▶️ Uso
+## ▶️ Usage
 
-### 🔍 Modo análisis (por defecto)
+### 🔍 Analysis mode (default)
 
 ```sh
 python main.py
 ```
 
-- No realiza ningún cambio en Spotify  
-- Solo genera archivos de logs con los resultados de clasificación  
+- Does not make any changes in Spotify
+- Only generates log files with classification results
 
 ---
 
-### ➕ Crear playlist con canciones clasificadas
+### ➕ Create playlist with classified songs
 
-Crear canciones en una playlist específica:
+Create songs in a specific playlist:
 
 ```sh
 python main.py --spotify-playlist-id <playlist_id>
 ```
 
-O usar la variable de entorno definida en `.env`:
+Or use the environment variable defined in `.env`:
 
 ```sh
 python main.py --push-to-playlist
@@ -104,15 +103,15 @@ python main.py --push-to-playlist
 
 ---
 
-### ➖ Eliminar canciones de la playlist de origen
+### ➖ Remove songs from source playlist
 
-Eliminar canciones de la playlist de origen que cumplieron el criterio:
+Remove songs from the source playlist that met the criteria:
 
 ```sh
 python main.py --remove-from-origin --spotify-playlist-id <playlist_id>
 ```
 
-O:
+Or:
 
 ```sh
 python main.py --remove-from-origin --push-to-playlist
@@ -120,51 +119,51 @@ python main.py --remove-from-origin --push-to-playlist
 
 ---
 
-## 🧠 Funcionamiento
+## 🧠 How it works
 
-1. Carga las credenciales desde `.env`  
-2. Carga el prompt desde `prompts.json`  
-3. Obtiene canciones desde las playlists configuradas  
-4. (Opcional) Enriquece los datos usando una API externa  
-5. Ejecuta el modelo de IA con Ollama  
-6. Clasifica cada canción  
-7. Guarda resultados en archivos de salida  
-8. (Opcional) Modifica playlists según flags utilizados  
-
----
-
-## 📄 Logs generados
-
-- `raw_tracks.log` → Información original de Spotify
-- `tracks.log` → Listas de canciones que utiliza el modelo para la clasificación
-- `tracks_approved.log` → Canciones aprobadas por el modelo
-- `tracks_not_approved.log` → Canciones no aprobadas
+1. Loads credentials from `.env`
+2. Loads the prompt from `prompts.json`
+3. Retrieves songs from configured playlists
+4. (Optional) Enriches data using an external API
+5. Runs the AI model with Ollama
+6. Classifies each song
+7. Saves results into output files
+8. (Optional) Modifies playlists based on used flags
 
 ---
 
-## 🔌 Requisitos
+## 📄 Generated logs
 
-- [Credenciales válidas de Spotify](http://developer.spotify.com/documentation/web-api/)
-- Modelo disponible en Ollama  
-- Archivo `prompts.json` configurado  
-- IDs de playlists de entrada  
-
-Opcional:
-
-- API de [TheAudioDB](https://www.theaudiodb.com/free_music_api/) para enriquecer metadatos  
+- `raw_tracks.log` → Original Spotify data
+- `tracks.log` → Songs used by the model for classification
+- `tracks_approved.log` → Songs approved by the model
+- `tracks_not_approved.log` → Songs not approved
 
 ---
 
-## 📜 Licencia
+## 🔌 Requirements
 
-Este proyecto está bajo la licencia MIT.
+- Valid Spotify credentials
+- Model available in Ollama
+- Configured `prompts.json` file
+- Input playlist IDs
+
+Optional:
+
+- TheAudioDB API to enrich metadata
 
 ---
 
-## 🧪 Nota
+## 📜 License
 
-La calidad de la clasificación depende directamente de:
-- El modelo utilizado en Ollama  
-- El diseño del prompt  
+This project is licensed under the MIT License.
 
-Se recomienda experimentar con distintos prompts para obtener mejores resultados.
+---
+
+## 🧪 Note
+
+The classification quality directly depends on:
+- The model used in Ollama
+- The prompt design
+
+It is recommended to experiment with different prompts to achieve better results.

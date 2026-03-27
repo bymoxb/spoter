@@ -25,27 +25,21 @@ SPOTIFY_PLAYLIST_IDS = os.getenv("SPOTIFY_PLAYLIST_IDS").split(",")
 SPOTIFY_PLAYLIST_ID = os.getenv("SPOTIFY_PLAYLIST_ID")
 
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL")
-# PROMPT_SYSTEM = os.getenv('PROMPT_SYSTEM')
-# PROMPT_USER_1 = os.getenv('PROMPT_USER_1')
 
 if not SPOTIFY_REDIRECT_URI:
-    raise ValueError('SPOTIFY_REDIRECT_URI es requerida')
+    raise ValueError('SPOTIFY_REDIRECT_URI is required')
 if not SPOTIFY_CLIENT_ID:
-    raise ValueError('SPOTIFY_CLIENT_ID es requerida')
+    raise ValueError('SPOTIFY_CLIENT_ID is required')
 if not SPOTIFY_CLIENT_SECRET:
-    raise ValueError('SPOTIFY_CLIENT_SECRET es requerida')
-# if not SPOTIFY_PLAYLIST_ID:
-#     raise ValueError('SPOTIFY_PLAYLIST_ID es requerida')
+    raise ValueError('SPOTIFY_CLIENT_SECRET is required')
 if not SPOTIFY_PLAYLIST_IDS:
-    raise ValueError('SPOTIFY_PLAYLIST_IDS es requerida')
+    raise ValueError('SPOTIFY_PLAYLIST_IDS is required')
 if not OLLAMA_MODEL:
-    raise ValueError('OLLAMA_MODEL es requerida')
-# if not PROMPT_USER_1:
-#     raise ValueError('PROMPT_USER_1 es requerida')
+    raise ValueError('OLLAMA_MODEL is required')
 
 if not os.path.exists(PROMPT_CONFIG_FILE_PATH):
     raise ValueError(
-        f'Debe de existir un archivo llamado {PROMPT_CONFIG_FILE_PATH} en el directorio actual. Puede utilizar el archivo prompts.json.example como ejemplo')
+        f'A file named {PROMPT_CONFIG_FILE_PATH} must exist in the current directory. You can use prompts.json.example as a reference')
 
 sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
     client_id=SPOTIFY_CLIENT_ID,
@@ -60,7 +54,7 @@ def get_spotify_tracks(playlists, silent=False):
 
     for playlist_id in playlists:
         if not silent:
-            print("Extrayendo canciones de la playlist: " + playlist_id)
+            print("Fetching songs from playlist: " + playlist_id)
 
         results = sp.playlist_items(playlist_id)
 
@@ -68,7 +62,7 @@ def get_spotify_tracks(playlists, silent=False):
         raw_tracks_per_playlist.extend(results["items"])
 
         if not silent:
-            print(f"Total de canciones en la playlist: {results["total"]}")
+            print(f"Total songs in playlist: {results['total']}")
 
         while results["next"]:
             time.sleep(1)
@@ -113,7 +107,6 @@ def approved_by_ollama(track):
             "content": json.dumps(track)
         })
 
-        # print(messages)
         response: ChatResponse = chat(model=OLLAMA_MODEL, messages=messages)
 
         return "true" in response['message']['content'].strip().lower()
@@ -136,7 +129,9 @@ def determine_with_ia(tracks):
             is_approved = False
 
         print_log_progress(
-            tracks, i, f"La cancion {is_approved and 'SI' or 'NO'} cumple los criterios del modelo: {track["name"]} - {', '.join(track["artists"])}")
+            tracks, i,
+            f"Song {'YES' if is_approved else 'NO'} meets model criteria: {track['name']} - {', '.join(track['artists'])}"
+        )
 
     return tracks_approved, tracks_not_approved
 
@@ -152,8 +147,7 @@ def push_to_playlist(tracks, playlist_id):
         full_item_ids = list(map(lambda track: track["id"], tracks[i:i+100]))
         items = [item for item in full_item_ids if item not in current_track_ids]
 
-        print(
-            f"Para la playlist {playlist_id} se agrega la cantidad de canciones únicas: {len(items)} ")
+        print(f"Adding unique songs to playlist {playlist_id}: {len(items)}")
 
         sp.playlist_add_items(
             playlist_id=playlist_id, items=items)
@@ -172,7 +166,7 @@ def remove_from_playlist(tracks):
 
     for i, (key, values) in enumerate(group_items):
         print_log_progress(
-            group_items, i, f"De la playlist {key} se remueven la cantidad de ocurrencias: {len(values)}")
+            group_items, i, f"Removing occurrences from playlist {key}: {len(values)}")
         sp.playlist_remove_all_occurrences_of_items(
             playlist_id=key, items=values)
 
@@ -198,15 +192,15 @@ def extract_relevant_data(raw_tracks):
 
 
 def write_logs(data, filename):
-    print(f"Guardando logfile en: {filename}")
+    print(f"Saving logfile to: {filename}")
     with open(filename, 'w') as f:
         json.dump(data, f, indent=2)
 
 
-def print_log_progress(data_list, current_inex, text):
+def print_log_progress(data_list, current_index, text):
     n_digits = len(str(len(data_list)))
     t_size = len(data_list)
-    print(f"[ {current_inex+1:0{n_digits}d}/{t_size:0{n_digits}d} ] {text}")
+    print(f"[ {current_index+1:0{n_digits}d}/{t_size:0{n_digits}d} ] {text}")
 
 
 def encode_artist_name(artist):
@@ -230,11 +224,11 @@ def inject_artists_metadata(tracks):
     artist_genres = defaultdict(list)
     artist_country = defaultdict(list)
 
-    print(f"Total artistas: {len(unique_artists)}")
+    print(f"Total artists: {len(unique_artists)}")
 
     for i, artist in enumerate(unique_artists):
         print_log_progress(unique_artists, i,
-                           f"Obteniendo metadatos de artista: {artist}")
+                           f"Fetching artist metadata: {artist}")
 
         if artist in artist_genres and artist_genres[artist]:
             # print(f"Géneros para {artist} ya obtenidos previamente.")
@@ -261,15 +255,10 @@ def inject_artists_metadata(tracks):
                     artist_country[artist].append(_country)
 
             else:
-                print(f"No hubo metadatos para el artista: {artist}")
+                print(f"No metadata found for artist: {artist}")
 
-        except Exception as e:
-            print(
-                f"Error al obtener metadatos para el artista: {artist}")
-
-        # print_log_progress(
-        #     unique_artists, i, f"Género para el artista: {artist} - {', '.join(artist_genres[artist])}")
-        # print()
+        except Exception:
+            print(f"Error fetching metadata for artist: {artist}")
 
         time.sleep(1)
 
@@ -305,30 +294,31 @@ def elapsed_time_str(elapsed_time):
 def main():
 
     parser = argparse.ArgumentParser(
-        description="Clasificador de canciones usando modelo LLM")
+        description="Song classifier using LLM model")
 
     parser.add_argument("--spotify-playlist-id", type=str,
-                        help="ID de la playlist a la que se agregará las canciones clasificadas", default=SPOTIFY_PLAYLIST_ID)
+                        help="Playlist ID where classified songs will be added",
+                        default=SPOTIFY_PLAYLIST_ID)
     parser.add_argument("--push-to-playlist", action="store_true",
-                        help="Flag que indica si las canciones clasificadas se agregan a la playlist especificada")
+                        help="Add classified songs to the playlist")
     parser.add_argument("--remove-from-origin", action="store_true",
-                        help="Flag que indica si se eliminan las canciones clasificadas de la playlist original")
+                        help="Remove classified songs from original playlists")
 
     args = parser.parse_args()
 
     if args.push_to_playlist and args.spotify_playlist_id is None:
         raise ValueError(
-            "Cuando se usa --push-to-playlist es necesario especificar un valor para --push-to-playlist o poblar la variable SPOTIFY_PLAYLIST_ID")
+            "When using --push-to-playlist you must provide --spotify-playlist-id or set SPOTIFY_PLAYLIST_ID")
 
     # -----------------------
 
-    print("Iniciando proceso de clasificación de canciones...")
+    print("Starting song classification process...")
     start_time = time.time()
 
     raw_tracks = get_spotify_tracks(SPOTIFY_PLAYLIST_IDS)
     tracks = extract_relevant_data(raw_tracks)
 
-    print(f"Total de canciones: {len(tracks)}")
+    print(f"Total songs: {len(tracks)}")
 
     tracks = inject_artists_metadata(tracks)
     tracks_approved, tracks_not_approved = determine_with_ia(tracks)
@@ -343,9 +333,9 @@ def main():
 
     print("--- Logs ---")
     elapsed = end_time - start_time
-    print(f"Total approved por el modelo: {len(tracks_approved)}")
-    print(f"Total not approved por el modelo: {len(tracks_not_approved)}")
-    print(f"Tiempo de ejecución: {elapsed_time_str(elapsed)}")
+    print(f"Total approved by model: {len(tracks_approved)}")
+    print(f"Total not approved by model: {len(tracks_not_approved)}")
+    print(f"Execution time: {elapsed_time_str(elapsed)}")
 
     write_logs(raw_tracks, "./raw_tracks.log")
     write_logs(tracks, "./tracks.log")
